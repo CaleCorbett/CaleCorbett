@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedIn Text Formatter</title>
+<style>
+  :root {
+    --linkedin-blue: #0a66c2;
+    --linkedin-blue-hover: #004182;
+    --bg: #f3f2ef;
+    --card: #ffffff;
+    --text: #191919;
+    --text-secondary: #666666;
+    --border: #e0e0e0;
+    --toolbar-bg: #f8f9fa;
+    --success: #057642;
+    --radius: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .logo svg { flex-shrink: 0; }
+
+  .help-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .help-btn:hover { border-color: var(--text-secondary); color: var(--text); }
+
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  @media (max-width: 860px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--toolbar-bg);
+  }
+
+  .panel-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .toolbar-btn {
+    background: none;
+    border: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .toolbar-btn:hover {
+    background: #e8e8e8;
+    color: var(--text);
+  }
+
+  .toolbar-btn.active {
+    background: #dbeafe;
+    color: var(--linkedin-blue);
+  }
+
+  .toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 6px;
+  }
+
+  .toolbar-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 400;
+    white-space: nowrap;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  /* Editor */
+  .editor-wrap { position: relative; }
+
+  #editor {
+    width: 100%;
+    min-height: 350px;
+    padding: 16px 18px;
+    border: none;
+    outline: none;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--text);
+    resize: vertical;
+    background: var(--card);
+  }
+
+  #editor::placeholder { color: #b0b0b0; }
+
+  .char-count {
+    position: absolute;
+    bottom: 8px;
+    right: 14px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .char-count.warn { color: #cc5500; }
+  .char-count.over { color: #cc0000; font-weight: 600; }
+
+  /* Preview */
+  .preview-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .device-toggle {
+    display: flex;
+    background: #e8e8e8;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .device-toggle button {
+    background: none;
+    border: none;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+  }
+
+  .device-toggle button.active {
+    background: var(--card);
+    color: var(--text);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  }
+
+  .preview-area {
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    min-height: 400px;
+    background: var(--bg);
+  }
+
+  .linkedin-post {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    width: 100%;
+    max-width: 555px;
+    transition: max-width 0.3s ease;
+  }
+
+  .linkedin-post.mobile { max-width: 375px; }
+
+  .post-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px 0;
+  }
+
+  .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--linkedin-blue), #0077b5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .post-meta .name { font-weight: 600; font-size: 14px; }
+  .post-meta .headline { font-size: 12px; color: var(--text-secondary); }
+  .post-meta .time { font-size: 12px; color: var(--text-secondary); }
+
+  .post-body {
+    padding: 10px 16px 14px;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .post-body .see-more {
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-weight: 500;
+  }
+
+  .post-body .see-more:hover { color: var(--linkedin-blue); text-decoration: underline; }
+
+  .post-engagement {
+    padding: 8px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .post-actions {
+    display: flex;
+    border-top: 1px solid var(--border);
+    padding: 4px 8px;
+  }
+
+  .post-action {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-radius: 4px;
+  }
+
+  /* Bottom actions */
+  .action-bar {
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-primary {
+    background: var(--linkedin-blue);
+    color: #fff;
+  }
+
+  .btn-primary:hover { background: var(--linkedin-blue-hover); }
+
+  .btn-secondary {
+    background: none;
+    border: 1px solid var(--linkedin-blue);
+    color: var(--linkedin-blue);
+  }
+
+  .btn-secondary:hover { background: #e8f0fe; }
+
+  .btn-ghost {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  .btn-ghost:hover { border-color: var(--text-secondary); color: var(--text); }
+
+  .copy-feedback {
+    font-size: 13px;
+    color: var(--success);
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .copy-feedback.show { opacity: 1; }
+
+  /* Emoji picker */
+  .emoji-picker {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 50;
+    width: 280px;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .emoji-picker.show { display: block; }
+
+  .emoji-picker .emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 2px;
+  }
+
+  .emoji-pick {
+    background: none;
+    border: none;
+    font-size: 20px;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .emoji-pick:hover { background: #e8e8e8; }
+
+  .emoji-section-title {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-weight: 600;
+    padding: 6px 2px 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Help modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--card);
+    border-radius: 12px;
+    max-width: 520px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 28px;
+  }
+
+  .modal h2 { margin-bottom: 16px; font-size: 20px; }
+  .modal h3 { margin: 16px 0 8px; font-size: 15px; color: var(--linkedin-blue); }
+
+  .modal table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  .modal td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  .modal td:first-child {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    white-space: nowrap;
+    color: var(--linkedin-blue);
+    font-weight: 500;
+    width: 45%;
+  }
+
+  .modal .close-modal {
+    margin-top: 16px;
+    width: 100%;
+  }
+
+  /* Fold indicator */
+  .fold-line {
+    border-bottom: 2px dashed #ff9800;
+    margin: 0 16px;
+    position: relative;
+  }
+
+  .fold-label {
+    position: absolute;
+    right: 0;
+    top: -10px;
+    background: #fff3e0;
+    color: #e65100;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <rect width="24" height="24" rx="4" fill="#0a66c2"/>
+      <path d="M7.5 9.5H5V18H7.5V9.5ZM6.25 8.5C7.08 8.5 7.75 7.83 7.75 7C7.75 6.17 7.08 5.5 6.25 5.5C5.42 5.5 4.75 6.17 4.75 7C4.75 7.83 5.42 8.5 6.25 8.5ZM19.25 18H16.75V13.88C16.75 12.95 16.73 11.77 15.46 11.77C14.17 11.77 13.98 12.77 13.98 13.82V18H11.5V9.5H13.88V10.56H13.91C14.23 9.94 15.04 9.29 16.24 9.29C18.77 9.29 19.25 10.94 19.25 13.09V18Z" fill="white"/>
+    </svg>
+    LinkedIn Text Formatter
+  </div>
+  <button class="help-btn" onclick="toggleHelp()">Markdown Guide</button>
+</header>
+
+<main>
+  <!-- Editor Panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Editor</span>
+      <div class="device-toggle" id="modeToggle">
+        <button class="active" onclick="setMode('post', this)">Post (3,000)</button>
+        <button onclick="setMode('about', this)">About (2,600)</button>
+        <button onclick="setMode('headline', this)">Headline (220)</button>
+      </div>
+    </div>
+    <div class="toolbar" style="position:relative;">
+      <button class="toolbar-btn" title="Bold (**text**)" onclick="wrapSelection('**','**')"><b>B</b></button>
+      <button class="toolbar-btn" title="Italic (*text*)" onclick="wrapSelection('*','*')" style="font-style:italic;">I</button>
+      <button class="toolbar-btn" title="Underline (__text__)" onclick="wrapSelection('__','__')" style="text-decoration:underline;">U</button>
+      <button class="toolbar-btn" title="Strikethrough (~~text~~)" onclick="wrapSelection('~~','~~')" style="text-decoration:line-through;">S</button>
+      <div class="toolbar-divider"></div>
+      <button class="toolbar-btn" title="Heading (## text)" onclick="insertPrefix('## ')">H</button>
+      <button class="toolbar-btn" title="Bullet list" onclick="insertPrefix('- ')">•</button>
+      <button class="toolbar-btn" title="Numbered list" onclick="insertPrefix('1. ')">1.</button>
+      <div class="toolbar-divider"></div>
+      <button class="toolbar-btn" title="Horizontal line" onclick="insertAtCursor('\n---\n')">─</button>
+      <button class="toolbar-btn" title="Line break" onclick="insertAtCursor('\n\n')">↵</button>
+      <div class="toolbar-divider"></div>
+      <button class="toolbar-btn" title="Emoji" onclick="toggleEmoji(event)" id="emojiBtn">☺</button>
+      <div class="emoji-picker" id="emojiPicker"></div>
+    </div>
+    <div class="editor-wrap">
+      <textarea id="editor" placeholder="Write your LinkedIn post here using markdown...
+
+Examples:
+**bold text** → 𝗯𝗼𝗹𝗱 𝘁𝗲𝘅𝘁
+*italic text* → 𝘪𝘵𝘢𝘭𝘪𝘤 𝘵𝘦𝘹𝘵
+__underlined__ → u̲n̲d̲e̲r̲l̲i̲n̲e̲d̲
+~~struck~~ → s̶t̶r̶u̶c̶k̶
+## Heading → 𝗛𝗲𝗮𝗱𝗶𝗻𝗴
+- bullet → • bullet
+--- → ─────────"></textarea>
+      <div class="char-count" id="charCount">0 / 3,000</div>
+    </div>
+    <div class="action-bar">
+      <button class="btn btn-primary" onclick="copyFormatted()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copy for LinkedIn
+      </button>
+      <button class="btn btn-ghost" onclick="clearEditor()">Clear</button>
+      <span class="copy-feedback" id="copyFeedback">Copied!</span>
+    </div>
+  </div>
+
+  <!-- Preview Panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Live Preview</span>
+      <div class="preview-controls">
+        <div class="device-toggle">
+          <button class="active" onclick="setDevice('desktop', this)">Desktop</button>
+          <button onclick="setDevice('mobile', this)">Mobile</button>
+        </div>
+      </div>
+    </div>
+    <div class="preview-area">
+      <div class="linkedin-post" id="linkedinPost">
+        <div class="post-header">
+          <div class="avatar">Y</div>
+          <div class="post-meta">
+            <div class="name">Your Name</div>
+            <div class="headline">Your headline here</div>
+            <div class="time">Just now · <svg width="12" height="12" fill="#666" viewBox="0 0 16 16"><path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.5 8.5a.5.5 0 01-.5.5H8a.5.5 0 01-.5-.5V4a.5.5 0 011 0v4h3a.5.5 0 01.5.5z"/></svg></div>
+          </div>
+        </div>
+        <div class="post-body" id="previewBody">
+          <span style="color:#b0b0b0;">Your formatted post will appear here...</span>
+        </div>
+        <div class="post-engagement">
+          <span>👍 ❤️ 💡 42</span>
+          <span>8 comments · 3 reposts</span>
+        </div>
+        <div class="post-actions">
+          <div class="post-action">👍 Like</div>
+          <div class="post-action">💬 Comment</div>
+          <div class="post-action">🔄 Repost</div>
+          <div class="post-action">📨 Send</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Help Modal -->
+<div class="modal-overlay" id="helpModal" onclick="if(event.target===this)toggleHelp()">
+  <div class="modal">
+    <h2>Markdown Formatting Guide</h2>
+    <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px;">
+      Write using markdown syntax and copy the Unicode-formatted result for LinkedIn.
+    </p>
+
+    <h3>Text Styling</h3>
+    <table>
+      <tr><td>**bold**</td><td>𝗯𝗼𝗹𝗱</td></tr>
+      <tr><td>*italic*</td><td>𝘪𝘵𝘢𝘭𝘪𝘤</td></tr>
+      <tr><td>***bold italic***</td><td>𝙗𝙤𝙡𝙙 𝙞𝙩𝙖𝙡𝙞𝙘</td></tr>
+      <tr><td>__underline__</td><td>u̲n̲d̲e̲r̲l̲i̲n̲e̲</td></tr>
+      <tr><td>~~strikethrough~~</td><td>s̶t̶r̶i̶k̶e̶</td></tr>
+    </table>
+
+    <h3>Structure</h3>
+    <table>
+      <tr><td>## Heading</td><td>𝗛𝗲𝗮𝗱𝗶𝗻𝗴 (bold)</td></tr>
+      <tr><td>- item</td><td>• item</td></tr>
+      <tr><td>1. item</td><td>1. item</td></tr>
+      <tr><td>---</td><td>──────────</td></tr>
+    </table>
+
+    <h3>Tips</h3>
+    <table>
+      <tr><td>Line break</td><td>Use a blank line between paragraphs</td></tr>
+      <tr><td>See more</td><td>LinkedIn shows ~5 lines before folding</td></tr>
+      <tr><td>Char limit</td><td>3,000 characters max for LinkedIn posts</td></tr>
+    </table>
+
+    <button class="btn btn-primary close-modal" onclick="toggleHelp()">Got it</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Unicode character maps for LinkedIn-compatible formatting
+// ============================================================
+const BOLD_MAP = {};
+const ITALIC_MAP = {};
+const BOLD_ITALIC_MAP = {};
+
+// Bold: Mathematical Sans-Serif Bold
+const boldUpper = '𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭';
+const boldLower = '𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇';
+const boldDigits = '𝟬𝟭𝟮𝟯𝟰𝟱𝟲𝟳𝟴𝟵';
+
+// Italic: Mathematical Sans-Serif Italic
+const italicUpper = '𝘈𝘉𝘊𝘋𝘌𝘍𝘎𝘏𝘐𝘑𝘒𝘓𝘔𝘕𝘖𝘗𝘘𝘙𝘚𝘛𝘜𝘝𝘞𝘟𝘠𝘡';
+const italicLower = '𝘢𝘣𝘤𝘥𝘦𝘧𝘨𝘩𝘪𝘫𝘬𝘭𝘮𝘯𝘰𝘱𝘲𝘳𝘴𝘵𝘶𝘷𝘸𝘹𝘺𝘻';
+
+// Bold Italic: Mathematical Sans-Serif Bold Italic
+const biUpper = '𝘼𝘽𝘾𝘿𝙀𝙁𝙂𝙃𝙄𝙅𝙆𝙇𝙈𝙉𝙊𝙋𝙌𝙍𝙎𝙏𝙐𝙑𝙒𝙓𝙔𝙕';
+const biLower = '𝙖𝙗𝙘𝙙𝙚𝙛𝙜𝙝𝙞𝙟𝙠𝙡𝙢𝙣𝙤𝙥𝙦𝙧𝙨𝙩𝙪𝙫𝙬𝙭𝙮𝙯';
+
+function buildMap(map, upper, lower, digits) {
+  const upArr = [...upper];
+  const loArr = [...lower];
+  for (let i = 0; i < 26; i++) {
+    map[String.fromCharCode(65 + i)] = upArr[i];
+    map[String.fromCharCode(97 + i)] = loArr[i];
+  }
+  if (digits) {
+    const dArr = [...digits];
+    for (let i = 0; i < 10; i++) map[String(i)] = dArr[i];
+  }
+}
+
+buildMap(BOLD_MAP, boldUpper, boldLower, boldDigits);
+buildMap(ITALIC_MAP, italicUpper, italicLower, null);
+buildMap(BOLD_ITALIC_MAP, biUpper, biLower, boldDigits);
+
+function applyMap(text, map) {
+  return [...text].map(c => map[c] || c).join('');
+}
+
+function applyUnderline(text) {
+  return [...text].map(c => c === ' ' ? ' ' : c + '\u0332').join('');
+}
+
+function applyStrikethrough(text) {
+  return [...text].map(c => c === ' ' ? ' ' : c + '\u0336').join('');
+}
+
+// ============================================================
+// Markdown → LinkedIn Unicode conversion
+// ============================================================
+function convertToLinkedIn(markdown) {
+  let text = markdown;
+
+  // Horizontal rules
+  text = text.replace(/^-{3,}$/gm, '──────────────────');
+
+  // Headings (## text) → bold
+  text = text.replace(/^#{1,3}\s+(.+)$/gm, (_, content) => {
+    return applyMap(content.trim(), BOLD_MAP);
+  });
+
+  // Bold italic: ***text*** or ___text___
+  text = text.replace(/\*{3}(.+?)\*{3}/g, (_, content) => applyMap(content, BOLD_ITALIC_MAP));
+  text = text.replace(/_{3}(.+?)_{3}/g, (_, content) => applyMap(content, BOLD_ITALIC_MAP));
+
+  // Bold: **text**
+  text = text.replace(/\*{2}(.+?)\*{2}/g, (_, content) => applyMap(content, BOLD_MAP));
+
+  // Italic: *text*
+  text = text.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, (_, content) => applyMap(content, ITALIC_MAP));
+
+  // Underline: __text__
+  text = text.replace(/__(.+?)__/g, (_, content) => applyUnderline(content));
+
+  // Strikethrough: ~~text~~
+  text = text.replace(/~~(.+?)~~/g, (_, content) => applyStrikethrough(content));
+
+  // Bullet lists: - item or * item (at start of line)
+  text = text.replace(/^[\-\*]\s+/gm, '• ');
+
+  // Numbered lists stay as-is (LinkedIn supports them natively)
+
+  return text;
+}
+
+// ============================================================
+// Preview with "See more" fold
+// ============================================================
+const FOLD_LINES = 5;
+let previewExpanded = false;
+
+function updatePreview() {
+  const raw = document.getElementById('editor').value;
+  const formatted = convertToLinkedIn(raw);
+  const previewEl = document.getElementById('previewBody');
+
+  if (!raw.trim()) {
+    previewEl.innerHTML = '<span style="color:#b0b0b0;">Your formatted post will appear here...</span>';
+    return;
+  }
+
+  const lines = formatted.split('\n');
+
+  if (lines.length > FOLD_LINES && !previewExpanded) {
+    const visible = lines.slice(0, FOLD_LINES).join('\n');
+    previewEl.innerHTML = escapeHtml(visible) + '<span class="see-more" onclick="expandPreview()">...see more</span>';
+  } else {
+    previewEl.textContent = formatted;
+  }
+}
+
+function expandPreview() {
+  previewExpanded = true;
+  updatePreview();
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ============================================================
+// Character counter
+// ============================================================
+const MODES = {
+  post: { limit: 3000, warn: 2700, label: 'Post' },
+  about: { limit: 2600, warn: 2340, label: 'About' },
+  headline: { limit: 220, warn: 190, label: 'Headline' },
+};
+let currentMode = 'post';
+
+function setMode(mode, btn) {
+  currentMode = mode;
+  document.querySelectorAll('#modeToggle button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateCharCount();
+}
+
+function updateCharCount() {
+  const text = convertToLinkedIn(document.getElementById('editor').value);
+  const len = text.length;
+  const el = document.getElementById('charCount');
+  const m = MODES[currentMode];
+  el.textContent = `${len.toLocaleString()} / ${m.limit.toLocaleString()}`;
+  el.className = 'char-count' + (len > m.limit ? ' over' : len > m.warn ? ' warn' : '');
+}
+
+// ============================================================
+// Copy formatted text
+// ============================================================
+function copyFormatted() {
+  const raw = document.getElementById('editor').value;
+  const formatted = convertToLinkedIn(raw);
+  navigator.clipboard.writeText(formatted).then(() => {
+    const fb = document.getElementById('copyFeedback');
+    fb.classList.add('show');
+    setTimeout(() => fb.classList.remove('show'), 2000);
+  });
+}
+
+// ============================================================
+// Toolbar actions
+// ============================================================
+function wrapSelection(before, after) {
+  const ta = document.getElementById('editor');
+  const start = ta.selectionStart;
+  const end = ta.selectionEnd;
+  const text = ta.value;
+
+  if (start === end) {
+    // No selection: insert markers and place cursor between
+    ta.value = text.slice(0, start) + before + after + text.slice(end);
+    ta.selectionStart = ta.selectionEnd = start + before.length;
+  } else {
+    ta.value = text.slice(0, start) + before + text.slice(start, end) + after + text.slice(end);
+    ta.selectionStart = start + before.length;
+    ta.selectionEnd = end + before.length;
+  }
+  ta.focus();
+  onEditorInput();
+}
+
+function insertPrefix(prefix) {
+  const ta = document.getElementById('editor');
+  const start = ta.selectionStart;
+  const text = ta.value;
+
+  // Find start of current line
+  const lineStart = text.lastIndexOf('\n', start - 1) + 1;
+  ta.value = text.slice(0, lineStart) + prefix + text.slice(lineStart);
+  ta.selectionStart = ta.selectionEnd = start + prefix.length;
+  ta.focus();
+  onEditorInput();
+}
+
+function insertAtCursor(str) {
+  const ta = document.getElementById('editor');
+  const start = ta.selectionStart;
+  ta.value = ta.value.slice(0, start) + str + ta.value.slice(ta.selectionEnd);
+  ta.selectionStart = ta.selectionEnd = start + str.length;
+  ta.focus();
+  onEditorInput();
+}
+
+// ============================================================
+// Emoji picker
+// ============================================================
+const EMOJIS = {
+  'Popular': ['🔥','💡','🚀','✅','👉','👏','💪','🎯','⭐','❤️','🙌','📌','💬','📈','🏆','✨'],
+  'Hands':   ['👍','👎','🤝','🙏','👋','✌️','🤞','🤙','👊','✊','🫡','🫶'],
+  'Arrows':  ['➡️','⬆️','⬇️','↗️','↘️','🔄','⏩','▶️'],
+  'Symbols': ['✅','❌','⚡','💎','🔑','🎯','📍','🔔','⏰','📊','💰','🏷️','📝','🗓️','📧','🔗'],
+};
+
+function buildEmojiPicker() {
+  const picker = document.getElementById('emojiPicker');
+  let html = '';
+  for (const [section, emojis] of Object.entries(EMOJIS)) {
+    html += `<div class="emoji-section-title">${section}</div><div class="emoji-grid">`;
+    for (const e of emojis) {
+      html += `<button class="emoji-pick" onclick="insertEmoji('${e}')">${e}</button>`;
+    }
+    html += '</div>';
+  }
+  picker.innerHTML = html;
+}
+
+function toggleEmoji(e) {
+  e && e.stopPropagation();
+  document.getElementById('emojiPicker').classList.toggle('show');
+}
+
+function insertEmoji(emoji) {
+  insertAtCursor(emoji);
+  document.getElementById('emojiPicker').classList.remove('show');
+}
+
+// Close emoji picker on outside click
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#emojiBtn') && !e.target.closest('#emojiPicker')) {
+    document.getElementById('emojiPicker').classList.remove('show');
+  }
+});
+
+// ============================================================
+// Device toggle
+// ============================================================
+function setDevice(mode, btn) {
+  document.querySelectorAll('.device-toggle button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const post = document.getElementById('linkedinPost');
+  post.classList.toggle('mobile', mode === 'mobile');
+}
+
+// ============================================================
+// Misc
+// ============================================================
+function clearEditor() {
+  document.getElementById('editor').value = '';
+  previewExpanded = false;
+  onEditorInput();
+}
+
+function toggleHelp() {
+  document.getElementById('helpModal').classList.toggle('show');
+}
+
+function onEditorInput() {
+  previewExpanded = false;
+  updatePreview();
+  updateCharCount();
+}
+
+// Init
+document.getElementById('editor').addEventListener('input', onEditorInput);
+buildEmojiPicker();
+updatePreview();
+updateCharCount();
+
+// Keyboard shortcuts
+document.getElementById('editor').addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+    e.preventDefault();
+    wrapSelection('**', '**');
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+    e.preventDefault();
+    wrapSelection('*', '*');
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
+    e.preventDefault();
+    wrapSelection('__', '__');
+  }
+});
+</script>
+</body>
+</html>
